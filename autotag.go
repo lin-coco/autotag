@@ -33,6 +33,7 @@ var (
 	conventionalCommitRex = regexp.MustCompile(`^\s*(?P<type>\w+)(?P<scope>(?:\([^()\r\n]*\)|\()?(?P<breaking>!)?)(?P<subject>:.*)?`)
 
 	// versionRex matches semVer style versions, eg: `v1.0.0`
+	// https://regex101.com/r/hx8zW8/1
 	versionRex = regexp.MustCompile(`^v?([\d]+\.?.*)`)
 
 	// semVerPreReleaseName validates SemVer according to
@@ -120,6 +121,7 @@ type GitRepo struct {
 	currentVersion *version.Version
 	currentTag     *git.Commit
 	newVersion     *version.Version
+	scope          string
 	branch         string
 	branchID       string // commit id of the branch latest commit (where we will apply the tag)
 
@@ -188,6 +190,13 @@ func NewRepo(cfg GitRepoConfig) (*GitRepo, error) {
 		buildMetadata:             cfg.BuildMetadata,
 		scheme:                    cfg.Scheme,
 		prefix:                    cfg.Prefix,
+	}
+
+	if r.scheme == "scope-conventional" {
+		if err = r.scopeSchemeCalcVersion(); err != nil {
+			return nil, err
+		}
+		return r, nil
 	}
 
 	err = r.parseTags()
@@ -311,7 +320,13 @@ func parseVersion(v string) (*version.Version, error) {
 // LatestVersion Reports the Latest version of the given repo
 // TODO:(jnelson) this could be more intelligent, looking for a nil new and reporting the latest version found if we refactor autobump at some point Mon Sep 14 13:05:49 2015
 func (r *GitRepo) LatestVersion() string {
-	return r.newVersion.String()
+	if r.scheme == "scope-conventional" {
+		if r.scope == "" {
+			return "no scope"
+		}
+		return r.scope + "-v" + r.newVersion.String()
+	}
+	return "v" + r.newVersion.String()
 }
 
 func (r *GitRepo) retrieveBranchInfo() error {
@@ -441,7 +456,15 @@ func (r *GitRepo) AutoTag() error {
 
 func (r *GitRepo) tagNewVersion() error {
 	// TODO:(jnelson) These should be configurable? Mon Sep 14 12:02:52 2015
-	tagName := fmt.Sprintf("v%s", r.newVersion.String())
+	var tagName string
+	if r.scheme == "scope-conventional" {
+		if r.scope == "" {
+			return nil
+		}
+		tagName = fmt.Sprintf("%s-v%s", r.scope, r.newVersion.String())
+	} else {
+		tagName = fmt.Sprintf("v%s", r.newVersion.String())
+	}
 	if !r.prefix {
 		tagName = r.newVersion.String()
 	}

@@ -158,6 +158,58 @@ refactor!: drop support for Node 6
 
 If no keywords are specified a **Patch** bump is applied.
 
+### Scheme：Module Conventional Commits
+
+`--scheme=module-conventional`
+
+每次提交的message遵循这样的格式
+
+```bash
+<类型>(<模块>): <描述>
+${Type}(${Module}): ${Description}
+```
+
+自动打出的tag为：`${Module}-v${Major}.${Minor}.${Patch}`
+
+`Major`、`Minor`、`Patch`都是根据上一个`Module`的版本递增或不递增的到的
+
+```bash
+git log --format="%s" --grep="(account):" -n 1
+
+git tag -l "*account*"
+```
+
+Examples of Module Conventional Commits
+
+- 提交信息不包含Module，将不设置tag
+
+```
+feat: allow provided config object to extend other configs
+```
+
+- 提交信息包含Module，Description具有`BREAKING CHANGE:`，将设置Module Major版本
+
+```
+feat(account): allow provided config object to extend other configs
+
+BREAKING CHANGE: `extends` key in config file is now used for extending other config files
+```
+
+- 提交信息包含Module，Type为`feat`，将设置Model Minor版本
+
+```
+feat(account): add polish language
+```
+
+- A commit message header containg a `!` after the _type_ is considered a breaking change and will
+  bump the **major** version:
+
+```
+refactor!(account): drop support for Node 6
+```
+
+- 提交信息包含Module and If no keywords are specified a **Patch** bump is applied.
+
 ### Pre-Release Tags
 
 `autotag` supports appending additional test to the calculated next version string:
